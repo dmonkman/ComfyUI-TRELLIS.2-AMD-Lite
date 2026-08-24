@@ -2,7 +2,7 @@
 
 ## 🔴 NEW (August 2026): AMD ROCm / HIP Support on Windows (including RDNA2)
 
-**This fork adds a working build for AMD GPUs (including RX 6000 series) on Windows**.
+**This guide adds a working build for AMD GPUs (including RX 6000 series) on Windows**.
 The upstream sources are CUDA-only; here they are hipified to
 `.hip` files (kept alongside the original `.cu`), and `setup.py` routes to the
 correct variant per platform. NVIDIA users can use the upstream repo unchanged.
@@ -12,25 +12,28 @@ ROCm 7.14, PyTorch 2.13, Python 3.12. It should work on other RDNA2/RDNA3 cards
 whose `gfx` target is supported by your ROCm SDK (the build script will auto-detect the
 architecture), but only `gfx1030` is tested.
 
-### Prerequisites (AMD)
+This guide is titles "Lite" because it doesn't come bundled as a ComfyUI extension. If you don't want to use ComfyUI,
+follow step 1-5 to complete the pre-requisite wheels for TRELLIS.2. But note, other wrappers have not been tested.
+
+### TRELLIS.2 Pre-requisites (AMD)
 
 *   An **AMD Radeon GPU (RDNA2 tested; RDNA1/3/4 should work - see table below)**
 *   **Python 3.12** with a recent **pip** (`python -m pip install --upgrade pip`).
     * ⚠️ **Python 3.13 or greater WILL fail at runtime on Windows due to lacking module support**
-*   A **ROCm 7.14 SDK + ROCm PyTorch** for your `gfx` target, installed into your
-    pip environment. ROCm 7.14 or above is required specifically because `torch_hip.dll` ships
+*   A **ROCm 7.14.x SDK + ROCm PyTorch** for your `gfx` target, installed into your
+    pip environment. ROCm 7.14 or above is required specifically because `torch_hip.dll` appears to ship
     the HIP `MasqueradingAsCUDA` symbols that earlier Windows builds lack.
 *   [OPTIONAL]  If you self compile for Windows, you need **Visual Studio 2022** with the C++ workload and MSVC Version 14.44
     * ⚠️ **MSVC 14.53 or greater WILL fail to compile due to lacking ROCm support**
 
-  
+
 ROCm has been sanity tested and is considered release ready on the vast majority of AMD cards for both
 Windows and Linux. You can check for your hardware at [TheRock/SUPPORTED_GPUS.md](https://github.com/ROCm/TheRock/blob/main/SUPPORTED_GPUS.md).
 
 The required wheels can be found at `https://rocm.nightlies.amd.com/whl-multi-arch/`.
 For more details about ROCm wheels, see [TheRock/RELEASES.md](https://github.com/ROCm/TheRock/blob/main/RELEASES.md).
 
-| Card(s) | Arch | Device extra | Win sanity-tested |
+| Card(s) | Arch | Device extra | ROCm sanity-tested (Windows) |
 |---|---|---|---|
 | RX 5700 / 5700 XT / 5600 XT | gfx1010 | `device-gfx1010` | ✅ |
 | Radeon Pro V520 | gfx1011 | `device-gfx1011` | ✅ |
@@ -87,9 +90,9 @@ methods below.
 
 ---
 
-### Option A - Automatic install from the ROCm index (recommended)
+### Option A - Automatic install from the ROCm nightly index (recommended)
 
-Pulls the pinned wheels directly from AMD's index. Replace `device-gfx1030` with
+Pulls the pinned wheels directly from AMD's nightly index. Replace `device-gfx1030` with
 the arch for your card (see the hardware table above), or use `device-all` for a
 larger install that covers every AMD GPU.
 
@@ -100,7 +103,6 @@ pip install --pre --extra-index-url https://rocm.nightlies.amd.com/whl-multi-arc
   "torchaudio==2.11.0+rocm7.14.0a20260624" `
   "rocm[libraries,devel,device-gfx1030]==7.14.*"
 ```
-
 
 ### Option B - Manual download and install
 
@@ -169,7 +171,7 @@ torchaudio                     2.11.0+rocm7.14.0a20260624
 torchvision                    0.27.0+rocm7.14.0a20260624
 ```
 
-Comfirm torch works in Python:
+Confirm torch works in Python:
 ```powershell
 python -c "import torch; print(torch.__version__, torch.version.hip, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
 ```
@@ -218,29 +220,14 @@ pip install `
 > workflow, or you can build locally with its `setup_build_env.ps1`. See
 > [Building from source](#building-from-source).
 
-## Step 6: Install ComfyUI-Manager
 
-ComfyUI-Manager provides the node-management UI and is needed to install and
-update custom nodes. Clone it into your `custom_nodes` folder:
+## Step 6: Install the ComfyUI-Trellis2-AMD custom nodes
 
-```powershell
-cd D:\dev\comfyui\custom_nodes
-git clone https://github.com/Comfy-Org/ComfyUI-Manager.git comfyui-manager
-```
-
-> **"Blocked by policy" on startup?** ComfyUI's security level can restrict
-> Manager's network features. If you need them, open **ComfyUI settings →
-> Security level** (or edit `user\default\ComfyUI-Manager\config.ini`) and set a
-> less restrictive level. This only affects Manager; the TRELLIS.2 pipeline runs
-> regardless.
-
-## Step 7: Install the ComfyUI-Trellis2 custom nodes
-
-Either install via the ComfuUI-Manager, or clone via git into `custom_nodes`:
+Either install via the ComfyUI-Manager, or clone via git into `custom_nodes`:
 
 ```powershell
 cd D:\dev\comfyui\custom_nodes
-git clone https://github.com/VisualBruno/ComfyUI-Trellis2.git comfyui-trellis2
+git clone https://github.com/dmonkman/ComfyUI-Trellis2-AMD.git
 ```
 
 > This repo provides the ComfyUI *nodes*; the ROCm-compatible native extensions
@@ -251,16 +238,16 @@ git clone https://github.com/VisualBruno/ComfyUI-Trellis2.git comfyui-trellis2
 Restart ComfyUI. The **Trellis2** nodes should now appear in the node menu
 (right-click → Add Node → search "Trellis2").
 
-## Step 8: Run the bundled Simple workflow
+## Step 7: Run the bundled Simple workflow
 
-ComfyUI-Trellis2 ships with a **Simple** workflow that exercises the full
-image-to-3D pipeline. Running it verifies your entire install end-to-end and
-triggers the first-run model download.
+ComfyUI-Trellis2-AMD ships with a multiple workflows that exercises the full
+image-to-3D pipeline. Move the workflows into your `\comfyui\user\default\workflows' folder. 
+Running it verifies your entire install end-to-end and triggers the first-run model download.
 
 1. Start ComfyUI:
 ```powershell
-   cd D:\dev\comfyui
-   python main.py
+   cd D:\paty\to\your\comfyui
+   .\comfyrun.bat
 ```
 2. Open the UI at `http://127.0.0.1:8188`.
 3. Load the Simple workflow: **Workflow → Browse Templates → ComfyUI-Trellis2 →
@@ -270,8 +257,7 @@ triggers the first-run model download.
    (see the note below — this is required on RDNA2).
 5. Queue the workflow with the provided sample image.
 
-**First run downloads the models** (several GB, from Hugging Face) to your HF
-cache — this is slow and hands-off. Subsequent runs reuse the cache.
+**First run downloads the models** (several GB, from Hugging Face) and will take a few minutes. 
 
 > **Model VRAM:** on 16 GB cards (RX 6800 XT etc.), start with the **FP8**
 > model variant (`visualbruno/TRELLIS.2-4B-FP8`) rather than the full 4B — the
@@ -294,21 +280,15 @@ workflow touches at runtime:
 > and restart — it's a runtime dependency the requirements step didn't cover on
 > your system.
 
+## Congratulations!
 
-### What was changed for HIP (CumMesh)
+If you made it this far, you now have a working TRELLIS.2 workflow in ComfyUI on AMD + Windows!
 
-Mostly mechanical (`hipify-perl` over `src/**` and `third_party/cubvh/**`),
-plus manual cleanup that hipify does not cover:
+## TODO: Further Improvements
 
-*   **Source router** in `setup.py` compiles `.hip` on HIP, `.cu` on CUDA.
-*   **`::cuda::std::` → `::std::`** (libcu++ constructs are not remapped).
-*   **rocPRIM radix-sort decomposer** returns `::rocprim::tuple<...>` (not
-    `std::tuple`) for `hipcub::DeviceRadixSort::SortPairs`.
-*   **`thrust::cuda` → `thrust::hip`** (thrust execution-policy namespace).
-*   Reverted hipify's over-rename of the project's own `cubvh` namespace.
-*   **Eigen include path** points at the repo root (Eigen is vendored there).
-
----
+- Ensure that nvdiffrec works, and port it if it doesn't. It is only used for lighting in certain TRELLIS.2 workflows, so not necessary
+for most users.
+- Further explore Vulcan shader backends. Aule comes with Vulkan compute shader options for attention (SHADER_BASELINE, SHADER_FAST, SHADER_FP16, SHADER_FP16_AMD for 64-wide wavefronts), but the ones that worked easily were strictly slower during my tests.
 
 ## Acknowledgements
 
