@@ -189,7 +189,7 @@ Windows and Linux
 pip install -r requirements.txt
 ```
 
-Ensure that all of the requirements are installed. At this point the TRELLIS.2 backend dependencies (o_voxel, CuMesh, FlexGEMM, and nvdiffrast) are installed and GPU-accelerated on AMD. You should be able to follow most CUDA written guidse from this point, but ensure you don't overwrite the custom dependencies (ex. torch). This way, you can drive it from your preferred front-end. For ComfyUI specifically, use the [ComfyUI-Trellis2-AMD](https://github.com/dmonkman/ComfyUI-Trellis2-AMD) extension.
+Ensure that all of the requirements are installed. At this point the TRELLIS.2 backend dependencies (o_voxel, CuMesh, FlexGEMM, and nvdiffrast) are installed and GPU-accelerated on AMD. You should be able to follow most CUDA written guides from this point, but ensure you don't overwrite the custom dependencies (ex. torch). This way, you can drive it from your preferred front-end. For ComfyUI specifically, use the [ComfyUI-Trellis2-AMD](https://github.com/dmonkman/ComfyUI-Trellis2-AMD) extension.
 
 ## License
 
