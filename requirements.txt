@@ -1,7 +1,7 @@
 comfyui-frontend-package==1.49.6
 comfyui-workflow-templates==0.11.43
 comfyui-embedded-docs==0.5.10
-#torch   # these three are AMD/ROCm specific and need to be installed via custom wheels (found at @https://rocm.nightlies.amd.com/whl-multi-arch/)
+#torch   # these three are AMD/ROCm specific and need to be installed via custom wheels (found at @https://stable.repo.amd.com/rocm/whl-next/)
 #torchaudio
 #torchvision
 torchsde
@@ -72,8 +72,9 @@ pyfqmr
 onnxruntime            # rembg's engine; CPU build (NOT onnxruntime-gpu on AMD)
 
 # --- ROCm / Windows-specific ---
-triton-windows          # FlexGEMM Triton kernels (Windows build of Triton)
-aule_attention          # uses 25x less memory on systems without flash-attention support
+triton-windows; platform_system == 'Windows'        # FlexGEMM Triton kernels (Windows build of Triton).
+                                                    # On Linux, pytorch-triton-rocm ships with the ROCm torch install
+aule_attention          # uses far less memory on systems without flash-attention support; cross-platform
 
 # --- Assorted custom node dependencies ---
 # - An assortment of packages that covered most dependencies for the extensions I have installed.

@@ -1,304 +1,188 @@
-# ComfyUI-TRELLIS.2-AMD
+# ComfyUI-TRELLIS.2-AMD-Lite
 
-## 🔴 NEW (August 2026): AMD ROCm / HIP Support on Windows (including RDNA2)
+**A front-end-agnostic backend for [TRELLIS.2](https://github.com/microsoft/TRELLIS.2) on AMD GPUs via ROCm.**
 
-**This guide adds a working build for AMD GPUs (including RX 6000 series) on Windows**.
-The upstream sources are CUDA-only; here they are hipified to
-`.hip` files (kept alongside the original `.cu`), and `setup.py` routes to the
-correct variant per platform. NVIDIA users can use the upstream repo unchanged.
+This repo gets the TRELLIS.2 image-to-3D backend running on AMD hardware: the pinned ROCm PyTorch stack plus the four native extension wheels (CuMesh, FlexGEMM, o_voxel, nvdiffrast) that TRELLIS.2 needs. Once it's installed you can drive it from whatever front-end you like. For the ComfyUI nodes and a full image-to-3D walkthrough, use the [ComfyUI-Trellis2-AMD](https://github.com/dmonkman/ComfyUI-Trellis2-AMD) extension instead. It's self-contained and repeats these backend steps.
 
-**Validated on:** AMD Radeon RX 6800 XT (`gfx1030`, RDNA2), Windows 11,
-ROCm 7.14, PyTorch 2.13, Python 3.12. It should work on other RDNA2/RDNA3 cards
-whose `gfx` target is supported by your ROCm SDK (the build script will auto-detect the
-architecture), but only `gfx1030` is tested.
+The upstream sources are CUDA-only. Here they're hipified to `.hip` (kept alongside the original `.cu`), and each `setup.py` routes to the correct variant per platform.
 
-This guide is titles "Lite" because it doesn't come bundled as a ComfyUI extension. If you don't want to use ComfyUI,
-follow step 1-5 to complete the pre-requisite wheels for TRELLIS.2. But note, other wrappers have not been tested.
+The wheels are built by GitHub Actions CI from tagged source, with build-provenance attestations, so you can audit them against the source rather than trusting an opaque binary.
 
-### TRELLIS.2 Pre-requisites (AMD)
+## Hardware support
 
-*   An **AMD Radeon GPU (RDNA2 tested; RDNA1/3/4 should work - see table below)**
-*   **Python 3.12** with a recent **pip** (`python -m pip install --upgrade pip`).
-    * ⚠️ **Python 3.13 or greater WILL fail at runtime on Windows due to lacking module support**
-*   A **ROCm 7.14.x SDK + ROCm PyTorch** for your `gfx` target, installed into your
-    pip environment. ROCm 7.14 or above is required specifically because `torch_hip.dll` appears to ship
-    the HIP `MasqueradingAsCUDA` symbols that earlier Windows builds lack.
-*   [OPTIONAL]  If you self compile for Windows, you need **Visual Studio 2022** with the C++ workload and MSVC Version 14.44
-    * ⚠️ **MSVC 14.53 or greater WILL fail to compile due to lacking ROCm support**
+Validated end-to-end on a **Radeon RX 6800 XT (`gfx1030`, RDNA2)**, Windows 11 and Ubuntu 24.04, Python 3.12, ROCm 10.0.0, PyTorch 2.13. The wheels are fat multi-arch builds covering RDNA1-4 (and gfx1250), so they should load on any of the cards below, but only `gfx1030` is tested here.
 
+| Family | Example cards | gfx targets |
+| --- | --- | --- |
+| RDNA1 | RX 5500-5700 XT | gfx1010-gfx1012 |
+| RDNA2 | RX 6400-6950 XT | gfx1030-gfx1036 |
+| RDNA3 | RX 7600-7900 XTX, Ryzen APUs | gfx1100-gfx1103, gfx1150-gfx1153 |
+| RDNA4 | RX 9060-9070 XT | gfx1200, gfx1201 |
 
-ROCm has been sanity tested and is considered release ready on the vast majority of AMD cards for both
-Windows and Linux. You can check for your hardware at [TheRock/SUPPORTED_GPUS.md](https://github.com/ROCm/TheRock/blob/main/SUPPORTED_GPUS.md).
+If a card here is listed as working, that means its `gfx` target is in the build and ROCm sanity-tests it. It does not mean this pipeline is validated on it. Check your card against [TheRock/SUPPORTED_GPUS.md](https://github.com/ROCm/TheRock/blob/main/SUPPORTED_GPUS.md).
 
-The required wheels can be found at `https://rocm.nightlies.amd.com/whl-multi-arch/`.
-For more details about ROCm wheels, see [TheRock/RELEASES.md](https://github.com/ROCm/TheRock/blob/main/RELEASES.md).
+## Prerequisites
 
-| Card(s) | Arch | Device extra | ROCm sanity-tested (Windows) |
-|---|---|---|---|
-| RX 5700 / 5700 XT / 5600 XT | gfx1010 | `device-gfx1010` | ✅ |
-| Radeon Pro V520 | gfx1011 | `device-gfx1011` | ✅ |
-| RX 5500 / 5500 XT / Pro W5500 | gfx1012 | `device-gfx1012` | ✅ |
-| RX 6800 / 6800 XT / 6900 XT / 6950 XT / Pro W6800 | gfx1030 | `device-gfx1030` | ✅ |
-| RX 6700 / 6700 XT / 6750 XT | gfx1031 | `device-gfx1031` | ✅ |
-| RX 6600 / 6600 XT / 6650 XT / Pro W6600 | gfx1032 | `device-gfx1032` | ✅ |
-| Van Gogh iGPU (Steam Deck) | gfx1033 | `device-gfx1033` | ✅ |
-| RX 6400 / 6500 XT | gfx1034 | `device-gfx1034` | ✅ |
-| Rembrandt iGPU (680M) | gfx1035 | `device-gfx1035` | ✅ |
-| Raphael iGPU | gfx1036 | `device-gfx1036` | ✅ |
-| RX 7900 XTX / 7900 XT / 7900 GRE / Pro W7900 | gfx1100 | `device-gfx1100` | ✅ |
-| RX 7800 XT / 7700 XT / Pro W7700 | gfx1101 | `device-gfx1101` | ✅ |
-| RX 7600 / 7600 XT | gfx1102 | `device-gfx1102` | ✅ |
-| Ryzen 7040/8040 (780M) | gfx1103 | `device-gfx1103` | ✅ |
-| Ryzen AI 300 (890M, Strix Point) | gfx1150 | `device-gfx1150` | ✅ |
-| Ryzen AI Max+ (Strix Halo) | gfx1151 | `device-gfx1151` | ✅ |
-| Ryzen AI 7 350 | gfx1152 | `device-gfx1152` | ✅ |
-| Radeon 820M iGPU (Krackan) | gfx1153 | `device-gfx1153` | ⚠️ not tested |
-| RX 9060 / 9060 XT | gfx1200 | `device-gfx1200` | ⚠️ not tested |
-| RX 9070 / 9070 XT / AI PRO R9700 | gfx1201 | `device-gfx1201` | ⚠️ not tested |
-| *All supported* | — | `device-all` | — |
-
-> ⚠️ = installs but **not** sanity-tested on Windows by TheRock (as of 2026-08-18); device enumeration or kernel launch may fail at runtime.
-> ✅ = sanity-tested on Windows by TheRock. Note this is **TheRock's** ROCm sanity test, not validation of *this* pipeline.
-> This project is developed and validated end-to-end only on **gfx1030 (RX 6800 XT)**; all other archs are best-effort — the wheels contain compiled code for them, but the full TRELLIS.2 pipeline is unverified there.
-
-## Step 1: Set up a clean environment
-
-Always install into a **fresh Python 3.12 virtual environment** - this avoids
-conflicts with any existing PyTorch or CUDA packages, which can silently break
-the ROCm install.
-
-```powershell
-# NOTE: Some ComfyUI extensions might expect venv to be in the ComfyUI directory
-cd C:/path/to/your/ComfyUI # wherever you want to place the environment
-
-# If you already have ComfyUI installed and working, backup your venv
-if (Test-Path .\venv) { Rename-Item .\venv venv_backup }
-
-# Create fresh venv and confirm
-py -3.12 -m venv venv
-.\venv\Scripts\Activate.ps1
-python --version   # confirm 3.12.x
-```
-
-> **Python 3.12 is required.** 3.13 has ecosystem gaps (open3d and others lack
-> 3.13 Windows wheels). 3.11 may work but is untested.
-
-## Step 2: Install ROCm and torch dependencies
-
-Make sure your fresh Python 3.12 venv is activated. Choose **one** of the two
-methods below.
+- An **AMD Radeon GPU** whose `gfx` target is supported by ROCm 10.0 (see above).
+- **Python 3.12** with a recent pip.
+  - Python 3.13+ currently fails at runtime on Windows (ecosystem gaps, e.g. `open3d`). Use 3.12.
+- The **ROCm 10.0 PyTorch** stack, installed via pip in Step 2 below.
 
 ---
 
-### Option A - Automatic install from the ROCm nightly index (recommended)
+## Step 1: Fresh virtual environment
 
-Pulls the pinned wheels directly from AMD's nightly index. Replace `device-gfx1030` with
-the arch for your card (see the hardware table above), or use `device-all` for a
-larger install that covers every AMD GPU.
+Install into a clean Python 3.12 venv to avoid clashing with any existing PyTorch/CUDA packages, which can silently break the ROCm install.
 
 ```powershell
-pip install --pre --extra-index-url https://rocm.nightlies.amd.com/whl-multi-arch/ `
-  "torch[device-gfx1030]==2.12.0+rocm7.14.0a20260624" `
-  "torchvision[device-gfx1030]==0.27.0+rocm7.14.0a20260624" `
-  "torchaudio==2.11.0+rocm7.14.0a20260624" `
-  "rocm[libraries,devel,device-gfx1030]==7.14.*"
+py -3.12 -m venv venv
+.\venv\Scripts\Activate.ps1
+python --version
 ```
 
-### Option B - Manual download and install
+On Linux:
 
-Use this if the automatic install fails, the nightly has been pruned, or you
-want an offline/archived copy. Download the wheels below into a folder (e.g.
-`D:\rocm\gfx1030\`), then install from that folder.
-
-**Recommended and tested wheel set** (gfx103x / RDNA2 / RX 6800 XT, Windows 11,
-Python 3.12), from `https://rocm.nightlies.amd.com/whl-multi-arch/`:
-
-```
-# Generic wheels (work across all GPUs)
-rocm-7.14.0a20260624.tar.gz
-rocm_sdk_core-7.14.0a20260624-py3-none-win_amd64.whl
-rocm_sdk_devel-7.14.0a20260624-py3-none-win_amd64.whl
-rocm_sdk_libraries-7.14.0a20260624-py3-none-win_amd64.whl
-torch-2.12.0+rocm7.14.0a20260624-cp312-cp312-win_amd64.whl
-torchvision-0.27.0+rocm7.14.0a20260624-cp312-cp312-win_amd64.whl
-torchaudio-2.11.0+rocm7.14.0a20260624-cp312-cp312-win_amd64.whl
-
-# Device-specific wheels (gfx1030 kernels - swap gfx1030 for your arch)
-rocm_sdk_device_gfx1030-7.14.0a20260624-py3-none-win_amd64.whl
-amd_torch_device_gfx1030-2.12.0+rocm7.14.0a20260624-cp312-cp312-win_amd64.whl
-amd_torchvision_device_gfx1030-0.27.0+rocm7.14.0a20260624-cp312-cp312-win_amd64.whl
+```bash
+python3.12 -m venv venv
+source venv/bin/activate
+python --version
 ```
 
-Once you have all the wheels downloaded, run the following command (ensure to change the
-paths and swap `gfx1030` for your device's arch throughout):
+## Step 2: Install the ROCm 10.0 PyTorch stack
+
+One pip command pulls the pinned stable wheels from AMD's index. `device-all` covers every supported GPU. Swap it for your specific arch (e.g. `device-gfx1030`) for a smaller download.
+
+Windows:
+```powershell
+pip install --extra-index-url https://stable.repo.amd.com/rocm/whl-next/ `
+  "torch[device-gfx1030]==2.13.0+rocm10.0.0" `
+  "torchvision[device-gfx1030]==0.28.0+rocm10.0.0" `
+  "torchaudio==2.11.0.2+rocm10.0.0" `
+  "rocm[libraries,device-gfx1030]==10.0.0"
+```
+
+Linux:
+```bash
+pip install --extra-index-url https://stable.repo.amd.com/rocm/whl-next/ \
+  "torch[device-gfx1030]==2.13.0+rocm10.0.0" \
+  "torchvision[device-gfx1030]==0.28.0+rocm10.0.0" \
+  "torchaudio==2.11.0.2+rocm10.0.0" \
+  "rocm[libraries,device-gfx1030]==10.0.0"
+```
+
+<details>
+<summary><strong>Fallback: manual / offline wheel install</strong></summary>
+
+If the index install fails (proxy, air-gapped machine, etc.), download the wheels for your arch from `https://stable.repo.amd.com/rocm/whl-next/` and install from a local folder. Replace `gfx1030` with your target throughout.
+
+Wheel set for gfx1030 / Python 3.12 / Windows:
+
+```
+torch-2.13.0+rocm10.0.0-cp312-cp312-win_amd64.whl
+torchvision-0.28.0+rocm10.0.0-cp312-cp312-win_amd64.whl
+torchaudio-2.11.0.2+rocm10.0.0-cp312-cp312-win_amd64.whl
+rocm_sdk_core-10.0.0-py3-none-win_amd64.whl
+rocm_sdk_libraries-10.0.0-py3-none-win_amd64.whl
+rocm_sdk_device_gfx1030-10.0.0-py3-none-win_amd64.whl
+amd_torch_device_gfx1030-2.13.0+rocm10.0.0-cp312-cp312-win_amd64.whl
+amd_torchvision_device_gfx1030-0.28.0+rocm10.0.0-cp312-cp312-win_amd64.whl
+```
 
 ```powershell
-pip install --find-links D:\rocm\gfx1030
-  "torch==2.12.0+rocm7.14.0a20260624" `
-  "torchvision==0.27.0+rocm7.14.0a20260624" `
-  "torchaudio==2.11.0+rocm7.14.0a20260624" `
-  "rocm==7.14.0a20260624" `
-  "rocm-sdk-core==7.14.0a20260624" `
-  "rocm-sdk-libraries==7.14.0a20260624" `
-  "rocm-sdk-devel==7.14.0a20260624" `
-  "rocm-sdk-device-gfx1030==7.14.0a20260624" `
-  "amd-torch-device-gfx1030==2.12.0+rocm7.14.0a20260624" `
-  "amd-torchvision-device-gfx1030==0.27.0+rocm7.14.0a20260624"
+pip install --find-links D:\rocm\gfx1030 `
+  "torch==2.13.0+rocm10.0.0" `
+  "torchvision==0.28.0+rocm10.0.0" `
+  "torchaudio==2.11.0.2+rocm10.0.0" `
+  "rocm==10.0.0" `
+  "rocm-sdk-core==10.0.0" `
+  "rocm-sdk-libraries==10.0.0" `
+  "rocm-sdk-device-gfx1030==10.0.0" `
+  "amd-torch-device-gfx1030==2.13.0+rocm10.0.0" `
+  "amd-torchvision-device-gfx1030==0.28.0+rocm10.0.0"
 ```
 
-## Step 3: Verify your install
+</details>
 
-Confirm every package installed at the correct, matching version before moving on.
-
-**Check the installed versions:**
+## Step 3: Verify
 
 ```powershell
 pip list | Select-String "torch|rocm"
 ```
 
-Expected output (all sharing the `7.14.0a20260624` suffix):
+Every package should share the `10.0.0` version:
+
 ```
-amd-torch-device-gfx1030       2.12.0+rocm7.14.0a20260624
-amd-torchvision-device-gfx1030 0.27.0+rocm7.14.0a20260624
-rocm                           7.14.0a20260624
-rocm-bootstrap                 0.1.0
-rocm-sdk-core                  7.14.0a20260624
-rocm-sdk-devel                 7.14.0a20260624
-rocm-sdk-device-gfx1030        7.14.0a20260624
-rocm-sdk-libraries             7.14.0a20260624
-torch                          2.12.0+rocm7.14.0a20260624
-torchaudio                     2.11.0+rocm7.14.0a20260624
-torchvision                    0.27.0+rocm7.14.0a20260624
+amd-torch-device-gfx1030       2.13.0+rocm10.0.0
+amd-torchvision-device-gfx1030 0.28.0+rocm10.0.0
+rocm                           10.0.0
+rocm-sdk-core                  10.0.0
+rocm-sdk-devel                 10.0.0
+rocm-sdk-device-gfx1030        10.0.0
+rocm-sdk-libraries             10.0.0
+torch                          2.13.0+rocm10.0.0
+torchaudio                     2.11.0.2+rocm10.0.0
+torchvision                    0.28.0+rocm10.0.0
 ```
 
-Confirm torch works in Python:
+Confirm torch sees the GPU:
+
 ```powershell
 python -c "import torch; print(torch.__version__, torch.version.hip, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
 ```
-Expected output (all sharing the `7.14.0a20260624` suffix):
+
+`torch.cuda.is_available()` should be `True` and the device name your card, e.g.:
+
 ```
-2.12.0+rocm7.14.0a20260624 7.14.60850 True AMD Radeon RX 6800 XT
+2.13.0+rocm10.0.0 10.0.xxxxx True AMD Radeon RX 6800 XT
 ```
 
-## Step 4: Clone this repo, and install requirements.txt into your venv
-This is a modified version of the `requirements.txt` that ships with ComfyUI main.
-It includes the Python packages required for ComfyUI, TRELLIS.2, and the
-ComfyUI-Trellis2 extension.
+## Step 4: Install the native extension wheels
 
-> **Important:** this requirements file deliberately **excludes** `torch`,
-> `torchvision`, and `torchaudio` because you need the custom ROCm builds you
-> installed in Steps 2-3. 
+The four native extensions ship as prebuilt fat multi-arch wheels under `wheels/`, one folder per OS and Python version. Install the set matching your platform:
 
+Windows
 ```powershell
-cd D:\
-git clone https://github.com/dmonkman/ComfyUI-TRELLIS.2-AMD.git
-
-cd ComfyUI-TRELLIS.2-AMD
-pip install -r requirements.txt
-```
-
-## Step 5: Install the custom extension wheels
-
-The four native extensions (CuMesh, FlexGEMM, o_voxel, nvdiffrast) are provided
-as prebuilt wheels in the `wheels/` folder. They were **built by GitHub Actions
-CI** from the tagged source of each repo, so you can audit the build logs and
-verify them against the source rather than trusting an opaque binary.
-
-Each wheel is a **fat multi-arch build** containing compiled device code for all
-supported RDNA/CDNA architectures (see the hardware table), so the same wheel
-works on any listed card.
-
-```powershell
+cd C:\path\to\your\ComfyUI-TRELLIS.2-AMD-Lite
 pip install `
-  .\wheels\cumesh-1.0-cp312-cp312-win_amd64.whl `
-  .\wheels\flex_gemm-1.0.0-cp312-cp312-win_amd64.whl `
-  .\wheels\o_voxel-0.0.1-cp312-cp312-win_amd64.whl `
-  .\wheels\nvdiffrast-0.4.0-cp312-cp312-win_amd64.whl
+  ".\wheels\Windows\Python3.12\cumesh-1.0+rocm10.0-cp312-cp312-win_amd64.whl" `
+  ".\wheels\Windows\Python3.12\flex_gemm-1.0.0+rocm10.0-cp312-cp312-win_amd64.whl" `
+  ".\wheels\Windows\Python3.12\o_voxel-0.0.1+rocm.10.0-cp312-cp312-win_amd64.whl" `
+  ".\wheels\Windows\Python3.12\nvdiffrast-0.4.0+rocm10.0-cp312-cp312-win_amd64.whl"
 ```
 
-> Prefer to build them yourself? Each repo has a `build-wheel.yaml` GitHub Actions
-> workflow, or you can build locally with its `setup_build_env.ps1`. See
-> [Building from source](#building-from-source).
-
-
-## Step 6: Install the ComfyUI-Trellis2-AMD custom nodes
-
-Either install via the ComfyUI-Manager, or clone via git into `custom_nodes`:
-
-```powershell
-cd D:\dev\comfyui\custom_nodes
-git clone https://github.com/dmonkman/ComfyUI-Trellis2-AMD.git
+On Linux, use `wheels/Linux/Python3.12/` and the `linux_x86_64` wheels
+```bash
+pip install \
+  ./wheels/Windows/Python3.12/cumesh-1.0+rocm10.0-cp312-cp312-win_amd64.whl \
+  ./wheels/Windows/Python3.12/flex_gemm-1.0.0+rocm10.0-cp312-cp312-win_amd64.whl \
+  ./wheels/Windows/Python3.12/o_voxel-0.0.1+rocm.10.0-cp312-cp312-win_amd64.whl \
+  ./wheels/Windows/Python3.12/nvdiffrast-0.4.0+rocm10.0-cp312-cp312-win_amd64.whl
 ```
 
-> This repo provides the ComfyUI *nodes*; the ROCm-compatible native extensions
-> and pinned dependencies are what you installed in Steps 2-5. If a node fails to
-> load with a missing-module error, it's almost always a Python dependency from
-> `requirements.txt` (Step 4).
+> Match these filenames to what's actually in your `wheels/` folder. FlexGEMM in particular carries a `+rocm10.0` local version tag, so its filename differs from the others.
 
-Restart ComfyUI. The **Trellis2** nodes should now appear in the node menu
-(right-click → Add Node → search "Trellis2").
+<details>
+<summary><strong>Fallback: build the wheels yourself</strong></summary>
 
-## Step 7: Run the bundled Simple workflow
+Each native extension has its own repo with a build workflow. Use the `setup_build_env.ps1` script included with the CuMesh repo before compiling on Windows:
 
-ComfyUI-Trellis2-AMD ships with a multiple workflows that exercises the full
-image-to-3D pipeline. Move the workflows into your `\comfyui\user\default\workflows' folder. 
-Running it verifies your entire install end-to-end and triggers the first-run model download.
+- [CuMesh-ROCm](https://github.com/dmonkman/CuMesh-ROCm)
+- [FlexGEMM-ROCm](https://github.com/dmonkman/FlexGEMM-ROCm)
+- [TRELLIS.2-ROCm](https://github.com/dmonkman/TRELLIS.2-ROCm) (contains o_voxel)
+- [nvdiffrast-ROCm](https://github.com/dmonkman/nvdiffrast-ROCm)
 
-1. Start ComfyUI:
-```powershell
-   cd D:\paty\to\your\comfyui
-   .\comfyrun.bat
-```
-2. Open the UI at `http://127.0.0.1:8188`.
-3. Load the Simple workflow: **Workflow → Browse Templates → ComfyUI-Trellis2 →
-   Simple** (or drag the `.json` from
-   `custom_nodes\ComfyUI-Trellis2\workflows\` onto the canvas).
-4. On the **TRELLIS.2 model loader** node, set the attention backends to `sdpa`
-   (see the note below — this is required on RDNA2).
-5. Queue the workflow with the provided sample image.
+The GitHub Actions workflow in each cross-compiles a multi-arch wheel on a GPU-less runner using TheRock's pip-installed ROCm toolchain.
 
-**First run downloads the models** (several GB, from Hugging Face) and will take a few minutes. 
+</details>
 
-> **Model VRAM:** on 16 GB cards (RX 6800 XT etc.), start with the **FP8**
-> model variant (`visualbruno/TRELLIS.2-4B-FP8`) rather than the full 4B — the
-> full model may OOM. Keep `low_vram` enabled.
-
-If it produces a textured GLB, **your install is complete and working.**
-
-### Dependencies installed by the workflow
-
-The wrapper pulls a few extra Python packages on first use. They're already in
-`requirements.txt` (Step 4), but for reference these are what the Simple
-workflow touches at runtime:
-
-- `pymeshlab`, `trimesh`, `open3d`, `pyfqmr` — mesh processing / decimation
-- `rembg` + `onnxruntime` (CPU) — background removal on the input image
-- `opencv-python` — image I/O in the post-process nodes
-- `plyfile` — PLY mesh read/write
-
-> If a node fails to load with `ModuleNotFoundError`, install the named package
-> and restart — it's a runtime dependency the requirements step didn't cover on
-> your system.
-
-## Congratulations!
-
-If you made it this far, you now have a working TRELLIS.2 workflow in ComfyUI on AMD + Windows!
-
-## TODO: Further Improvements
-
-- Ensure that nvdiffrec works, and port it if it doesn't. It is only used for lighting in certain TRELLIS.2 workflows, so not necessary
-for most users.
-- Further explore Vulcan shader backends. Aule comes with Vulkan compute shader options for attention (SHADER_BASELINE, SHADER_FAST, SHADER_FP16, SHADER_FP16_AMD for 64-wide wavefronts), but the ones that worked easily were strictly slower during my tests.
-
-## Acknowledgements
-
-This package builds upon and integrates code from several excellent open-source libraries. We would like to express our gratitude to the authors of:
-
-*   **[cubvh](https://github.com/ashawkey/cubvh)**: For the high-performance CUDA BVH acceleration toolkit.
-*   **[xatlas](https://github.com/jpcy/xatlas)**: For the robust UV parameterization and atlas packing library.
-*   **[Eigen](https://eigen.tuxfamily.org/)**: For the C++ template library for linear algebra, used by the cubvh backend.
-*   **[pamo](https://github.com/SarahWeiii/pamo)**: For the reference implementation of the GPU parallel edge collapse algorithm used in our mesh simplification module.
+At this point the TRELLIS.2 backend dependencies (o_voxel, CuMesh, FlexGEMM, and nvdiffrast) are installed and GPU-accelerated on AMD. You should be able to follow any CUDA written guide from this point, but ensure you don't overwrite the custom dependencies. This way, you can drive it from your preferred front-end. For ComfyUI specifically, use the [ComfyUI-Trellis2-AMD](https://github.com/dmonkman/ComfyUI-Trellis2-AMD) extension.
 
 ## License
 
-[MIT License](LICENSE)
+[MIT License](LICENSE). The bundled native extensions retain their own upstream licenses. Note that **nvdiffrast is under the NVIDIA Source Code License (non-commercial)** which applies to any pipeline that depends on it.
+
+## Acknowledgements
+
+- [visualbruno/ComfyUI-Trellis2](https://github.com/visualbruno/ComfyUI-Trellis2) and [Microsoft TRELLIS.2](https://github.com/microsoft/TRELLIS.2), the upstream wrapper and model this builds on.
+- [cubvh](https://github.com/ashawkey/cubvh), [xatlas](https://github.com/jpcy/xatlas), [Eigen](https://eigen.tuxfamily.org/), and [pamo](https://github.com/SarahWeiii/pamo), native libraries used by the extensions.
+- The "Blackwell Fix" from [ThatButters/trellis2-blackwell-fix](https://github.com/ThatButters/trellis2-blackwell-fix), and the ROCm/ComfyUI Discord community.

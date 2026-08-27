@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 :: add or remove commandline parameters into this line, these are recommended for 6000 series amd gpu's.
-:: for debugging: --disable-all-custom-nodes --whitelist-custom-nodes ComfyUI-Trellis2
+:: for debugging: --disable-all-custom-nodes --whitelist-custom-nodes ComfyUI-Trellis2-AMD
 set PARAMS= --use-quad-cross-attention --disable-smart-memory --disable-pinned-memory --disable-api-nodes --preview-method latent2rgb --disable-cuda-malloc
 
 :: change the path below *only below* to wherever you have installed comfyui to. (in this example it is : "D:\ComfyUI") , it will change everything else automatically.
