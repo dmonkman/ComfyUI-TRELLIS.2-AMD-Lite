@@ -10,7 +10,7 @@ The wheels are built by GitHub Actions CI from tagged source, with build-provena
 
 ## Hardware support
 
-Validated end-to-end on a **Radeon RX 6800 XT (`gfx1030`, RDNA2)**, Windows 11 and Ubuntu 24.04, Python 3.12, ROCm 10.0.0, PyTorch 2.13. The wheels are fat multi-arch builds covering RDNA1-4 (and gfx1250), so they should load on any of the cards below, but only `gfx1030` is tested here.
+Validated end-to-end on a **Radeon RX 6800 XT (`gfx1030`, RDNA2)**, Windows 11 and Ubuntu 24.04 (**22.04 will not work**), Python 3.12, ROCm 10.0.0, PyTorch 2.13. The wheels are fat multi-arch builds covering RDNA1-4 (and gfx1250), so they should load on any of the cards below, but only `gfx1030` is tested here.
 
 | Family | Example cards | gfx targets |
 | --- | --- | --- |
@@ -103,10 +103,16 @@ pip install --find-links D:\rocm\gfx1030 `
 
 </details>
 
-## Step 3: Verify
+### Verify Installations
 
+Windows
 ```powershell
 pip list | Select-String "torch|rocm"
+```
+
+Linux
+```bash
+pip list | grep "rocm"
 ```
 
 Every package should share the `10.0.0` version:
@@ -138,7 +144,7 @@ python -c "import torch; print(torch.__version__, torch.version.hip, torch.cuda.
 
 ## Step 4: Install the native extension wheels
 
-The four native extensions ship as prebuilt fat multi-arch wheels under `wheels/`, one folder per OS and Python version. Install the set matching your platform:
+Clone or download this repo. The four native extensions ship as prebuilt fat multi-arch wheels under `wheels/`, one folder per OS and Python version. Install the set matching your platform:
 
 Windows
 ```powershell
@@ -152,11 +158,12 @@ pip install `
 
 On Linux, use `wheels/Linux/Python3.12/` and the `linux_x86_64` wheels
 ```bash
+cd ~/path/to/your/ComfyUI-TRELLIS.2-AMD-Lite
 pip install \
-  ./wheels/Windows/Python3.12/cumesh-1.0+rocm10.0-cp312-cp312-win_amd64.whl \
-  ./wheels/Windows/Python3.12/flex_gemm-1.0.0+rocm10.0-cp312-cp312-win_amd64.whl \
-  ./wheels/Windows/Python3.12/o_voxel-0.0.1+rocm.10.0-cp312-cp312-win_amd64.whl \
-  ./wheels/Windows/Python3.12/nvdiffrast-0.4.0+rocm10.0-cp312-cp312-win_amd64.whl
+  ./wheels/Linux/Python3.12/cumesh-1.0+rocm10.0-cp312-cp312-linux_x86_64.whl   \
+  ./wheels/Linux/Python3.12/flex_gemm-1.0.0+rocm10.0-cp312-cp312-linux_x86_64.whl \
+  ./wheels/Linux/Python3.12/o_voxel-0.0.1+rocm.10.0-cp312-cp312-linux_x86_64.whl  \
+  ./wheels/Linux/Python3.12/nvdiffrast-0.4.0+rocm10.0-cp312-cp312-linux_x86_64.whl 
 ```
 
 > Match these filenames to what's actually in your `wheels/` folder. FlexGEMM in particular carries a `+rocm10.0` local version tag, so its filename differs from the others.
