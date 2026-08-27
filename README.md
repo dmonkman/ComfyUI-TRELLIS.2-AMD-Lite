@@ -142,7 +142,7 @@ python -c "import torch; print(torch.__version__, torch.version.hip, torch.cuda.
 2.13.0+rocm10.0.0 10.0.xxxxx True AMD Radeon RX 6800 XT
 ```
 
-## Step 4: Install the native extension wheels
+## Step 3: Install custom wheels
 
 Clone or download this repo. The four native extensions ship as prebuilt fat multi-arch wheels under `wheels/`, one folder per OS and Python version. Install the set matching your platform:
 
@@ -182,7 +182,14 @@ The GitHub Actions workflow in each cross-compiles a multi-arch wheel on a GPU-l
 
 </details>
 
-At this point the TRELLIS.2 backend dependencies (o_voxel, CuMesh, FlexGEMM, and nvdiffrast) are installed and GPU-accelerated on AMD. You should be able to follow any CUDA written guide from this point, but ensure you don't overwrite the custom dependencies. This way, you can drive it from your preferred front-end. For ComfyUI specifically, use the [ComfyUI-Trellis2-AMD](https://github.com/dmonkman/ComfyUI-Trellis2-AMD) extension.
+## Step 4: Install requirements.txt
+
+Windows and Linux
+```bash
+pip install -r requirements.txt
+```
+
+Ensure that all of the requirements are installed. At this point the TRELLIS.2 backend dependencies (o_voxel, CuMesh, FlexGEMM, and nvdiffrast) are installed and GPU-accelerated on AMD. You should be able to follow most CUDA written guidse from this point, but ensure you don't overwrite the custom dependencies (ex. torch). This way, you can drive it from your preferred front-end. For ComfyUI specifically, use the [ComfyUI-Trellis2-AMD](https://github.com/dmonkman/ComfyUI-Trellis2-AMD) extension.
 
 ## License
 
