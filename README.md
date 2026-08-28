@@ -1,5 +1,7 @@
 # ComfyUI-TRELLIS.2-AMD-Lite
 
+🔴 NEW (August 2026): AMD ROCm / HIP Support on Windows + Linux (including RDNA1,2,3,4)
+
 **A front-end-agnostic backend for [TRELLIS.2](https://github.com/microsoft/TRELLIS.2) on AMD GPUs via ROCm.**
 
 This repo gets the TRELLIS.2 image-to-3D backend running on AMD hardware: the pinned ROCm PyTorch stack plus the four native extension wheels (CuMesh, FlexGEMM, o_voxel, nvdiffrast) that TRELLIS.2 needs. Once it's installed you can drive it from whatever front-end you like. For the ComfyUI nodes and a full image-to-3D walkthrough, use the [ComfyUI-Trellis2-AMD](https://github.com/dmonkman/ComfyUI-Trellis2-AMD) extension instead. It's self-contained and repeats these backend steps.
@@ -122,7 +124,7 @@ amd-torch-device-gfx1030       2.13.0+rocm10.0.0
 amd-torchvision-device-gfx1030 0.28.0+rocm10.0.0
 rocm                           10.0.0
 rocm-sdk-core                  10.0.0
-rocm-sdk-devel                 10.0.0
+rocm-sdk-devel                 10.0.0    # shouldn't need this for runtime
 rocm-sdk-device-gfx1030        10.0.0
 rocm-sdk-libraries             10.0.0
 torch                          2.13.0+rocm10.0.0
@@ -196,7 +198,11 @@ Ensure that all of the requirements are installed. At this point the TRELLIS.2 b
 [MIT License](LICENSE). The bundled native extensions retain their own upstream licenses. Note that **nvdiffrast is under the NVIDIA Source Code License (non-commercial)** which applies to any pipeline that depends on it.
 
 ## Acknowledgements
+This package builds upon and integrates code from several excellent open-source libraries. We would like to express our gratitude to the authors of:
 
-- [visualbruno/ComfyUI-Trellis2](https://github.com/visualbruno/ComfyUI-Trellis2) and [Microsoft TRELLIS.2](https://github.com/microsoft/TRELLIS.2), the upstream wrapper and model this builds on.
-- [cubvh](https://github.com/ashawkey/cubvh), [xatlas](https://github.com/jpcy/xatlas), [Eigen](https://eigen.tuxfamily.org/), and [pamo](https://github.com/SarahWeiii/pamo), native libraries used by the extensions.
-- The "Blackwell Fix" from [ThatButters/trellis2-blackwell-fix](https://github.com/ThatButters/trellis2-blackwell-fix), and the ROCm/ComfyUI Discord community.
+*   **[cubvh](https://github.com/ashawkey/cubvh)**: For the high-performance CUDA BVH acceleration toolkit.
+*   **[xatlas](https://github.com/jpcy/xatlas)**: For the robust UV parameterization and atlas packing library.
+*   **[Eigen](https://eigen.tuxfamily.org/)**: For the C++ template library for linear algebra, used by the cubvh backend.
+*   **[pamo](https://github.com/SarahWeiii/pamo)**: For the reference implementation of the GPU parallel edge collapse algorithm used in our mesh
+*   **[visualbruno/ComfyUI-Trellis2](https://github.com/visualbruno/ComfyUI-Trellis2)** and [Microsoft TRELLIS.2](https://github.com/microsoft/TRELLIS.2), the upstream wrapper and model this builds on.
+*   The "Blackwell Fix" from [ThatButters/trellis2-blackwell-fix](https://github.com/ThatButters/trellis2-blackwell-fix)
